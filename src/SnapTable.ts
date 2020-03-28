@@ -31,7 +31,7 @@ export interface ICurrentPageInfo {
     pageContext: IPageContext;
 }
 
-export default class TableSnap {
+export default class SnapTable {
     doc: jsPDF;
     pageWidth: number;
     pageHeight: number;

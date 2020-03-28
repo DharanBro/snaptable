@@ -1,7 +1,7 @@
 import * as React from "react";
 import jsPDF from "jspdf";
 import "./styles.css";
-import TableSnap from "./TableSnap";
+import SnapTable from "./SnapTable";
 import { data } from "./data";
 
 
@@ -10,7 +10,7 @@ export default function App() {
   const [source, setSource] = React.useState("");
   React.useEffect(() => {
     var doc = new jsPDF({ unit: "px" });
-    const tableSnap = new TableSnap(doc)
+    const tableSnap = new SnapTable(doc)
     tableSnap.writeTable(data)
     const output = doc.output("datauri");
     console.log(output);

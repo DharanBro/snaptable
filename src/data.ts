@@ -1,4 +1,4 @@
-import { ITableData } from "./TableSnap";
+import { ITableData } from "./SnapTable";
 
 export const data: ITableData = {
     // head: ['Name', 'Email', 'Country'],

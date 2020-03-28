@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import pixelWidth from "string-pixel-width";
 import Colors from './enum/colors';
-import { ICurrentPageInfo } from "./TableSnap";
+import { ICurrentPageInfo } from "./SnapTable";
 export default class Page {
     private rowHeight: number = 15;
     private columnWidth: number[];

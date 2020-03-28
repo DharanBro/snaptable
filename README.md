@@ -1,4 +1,4 @@
-# [WIP] Table Snap 
+# [WIP] SnapTable 
 
 Plugin for [jsPDF](https://github.com/MrRio/jsPDF) to write a table to pdf written with typescript. 
 
