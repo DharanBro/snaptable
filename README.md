@@ -4,8 +4,8 @@ Plugin for [jsPDF](https://github.com/MrRio/jsPDF) to write a table to pdf writt
 
 ```
 const  doc = new  jsPDF({ unit:  "px" });
-const  tableSnap = new  TableSnap(doc)
-tableSnap.writeTable(data);
+const  snapTable = new  SnapTable(doc)
+snapTable.writeTable(data);
 const  output = doc.output("datauri");
 ```
 > Sample output: Splitting the outspaced columns to multiple pages with

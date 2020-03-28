@@ -10,8 +10,8 @@ export default function App() {
   const [source, setSource] = React.useState("");
   React.useEffect(() => {
     var doc = new jsPDF({ unit: "px" });
-    const tableSnap = new SnapTable(doc)
-    tableSnap.writeTable(data)
+    const snapTable = new SnapTable(doc)
+    snapTable.writeTable(data)
     const output = doc.output("datauri");
     console.log(output);
     setSource(output);
