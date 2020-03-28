@@ -1,6 +1,6 @@
 {
-  "name": "table-snap",
-  "version": "1.0.0",
+  "name": "tablesnap",
+  "version": "0.0.1",
   "description": "",
   "keywords": [],
   "main": "src/index.tsx",
