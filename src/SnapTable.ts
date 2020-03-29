@@ -55,7 +55,7 @@ export default class SnapTable {
         const pages: Page[] = [];
         let header: ICell[];
         if (typeof data.head[0] === "string") {
-            header = (<string[]>data.head).map((cell: string) => {
+            header = (data.head as string[]).map((cell: string) => {
                 return {
                     text: cell,
                     background: Colors.WHITE,
@@ -63,7 +63,7 @@ export default class SnapTable {
                 }
             })
         } else {
-            header = <ICell[]>data.head;
+            header = data.head as ICell[];
         }
         const rows = data.body;
         let contentHeight = this.headerHeight; // Start with height of header
