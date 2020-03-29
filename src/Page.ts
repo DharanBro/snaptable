@@ -1,15 +1,13 @@
 import jsPDF from "jspdf";
-import pixelWidth from "string-pixel-width";
 import Colors from './enum/colors';
-import { ICurrentPageInfo } from "./SnapTable";
+import { Row } from "./Row";
 export default class Page {
     private rowHeight: number = 15;
     private columnWidth: number[];
-    private header: string[];
-    private rows: IRow[];
+    private header: ICell[];
+    private rows: Row[];
     private doc: jsPDF;
     private pageWidth: number;
-    private pageHeight: number;
     configuration: IPageConfiguration = {
         pageNumber: {
             enabled: false,
@@ -24,30 +22,21 @@ export default class Page {
         }
     };
 
-    constructor(doc: jsPDF, header?: string[], configuration?: IPageConfiguration) {
+    constructor(doc: jsPDF, header?: ICell[], configuration?: IPageConfiguration) {
         this.columnWidth = [];
         this.rows = [];
         this.doc = doc;
         this.header = header || [];
-        const currentPageInfo: ICurrentPageInfo = this.doc.internal.getCurrentPageInfo();
+        const currentPageInfo: JsPDF_X.ICurrentPageInfo = this.doc.internal.getCurrentPageInfo();
         this.pageWidth = currentPageInfo.pageContext.mediaBox.topRightX / 1.33;
-        this.pageHeight = currentPageInfo.pageContext.mediaBox.topRightY / 1.33;
     }
 
-    setHeaders(header: string[]) {
+    setHeaders(header: ICell[]) {
         this.header = header;
     }
 
-    private updateColumnWidth(cellContent: string, columnIndex: number) {
-        const width: number = pixelWidth(cellContent, { size: 10 }) / 1.33;
-        if (this.columnWidth[columnIndex] !== undefined) {
-            if (width > this.columnWidth[columnIndex]) {
-                this.columnWidth[columnIndex] = width;
-            }
-        }
-        else {
-            this.columnWidth[columnIndex] = width;
-        }
+    setColumnWidth(columnWidth: number[]) {
+        this.columnWidth = columnWidth;
     }
 
     private getColumnPositions() {
@@ -77,18 +66,13 @@ export default class Page {
         const page: Page = new Page(this.doc);
         pages.push(page);
 
-        // const createRow = (row: IRow) => {
-        //     const newRow: IRow = {
-        //         columns: [row.columns[0]],
-        //         isHeader: false,
-        //         rowHeight: 15,
-        //     };
-        //     return newRow;
-        // }
         for (let i = 0; i < this.rows.length; i++) {
             let pageIndex = 0;
-            let row: string[] = [this.rows[i].columns[0].text];
-            let header: string[] = [this.header[0]];
+            let row: Row = new Row();
+            row.addColumn(this.rows[i].columns[0]);
+
+            let columnWidth: number[] = [this.columnWidth[0]];
+            let header: ICell[] = [this.header[0]];
             const firstCellWidth = this.columnWidth[0];
             let columnPos = columnPosition[0] + this.columnWidth[0] + leftMargin;
             for (let j = 1; j < columnPosition.length; j++) {
@@ -96,6 +80,7 @@ export default class Page {
                 if (columnPos + this.columnWidth[j] > availableWidth) {
                     pages[pageIndex].addRow(row);
                     pages[pageIndex].setHeaders(header);
+                    pages[pageIndex].setColumnWidth(columnWidth);
 
                     // Create new page and reset the row
                     pageIndex++;
@@ -104,31 +89,28 @@ export default class Page {
                         pages[pageIndex] = page;
                     }
                     columnPos = firstCellWidth;
-                    row = [this.rows[i].columns[0].text];
+                    row = new Row();
+                    row.addColumn(this.rows[i].columns[0]);
                     header = [this.header[0]];
-                    // row = createRow(this.rows[i]);
+                    columnWidth = [this.columnWidth[0]];
                 }
                 columnPos += this.columnWidth[j];
+                row.addColumn(this.rows[i].columns[j]);
                 header.push(this.header[j]);
-                row.push(this.rows[i].columns[j].text)
-                // row.columns.push(this.rows[i].columns[j]);
-
-
+                columnWidth.push(this.columnWidth[j]);
             }
             pages[pageIndex].addRow(row);
             pages[pageIndex].setHeaders(header);
-            // const row = 
-            // const rowHeader: ICell = {
-            //     background: Colors.WHITE,
-            //     color: Colors.DARK_GREY,
-            //     text:
-            // };
+            pages[pageIndex].setColumnWidth(columnWidth);
         }
         return pages;
     }
 
 
     writeToPdf() {
+        if (this.columnWidth.length === 0) {
+            throw new Error("Column width not available: Did you forget to call page.setColumnWidth()?");
+        }
         const columnPosition = this.getColumnPositions();
         if (this.shouldSplitColumns(columnPosition)) {
             const pages = this.getColumnSplittedPages();
@@ -157,7 +139,7 @@ export default class Page {
             const x = columnPosition[i];
             let column = this.header[i];
             console.log(column);
-            this.doc.text(column, x, y + (15 / 2), {
+            this.doc.text(column.text, x, y + (15 / 2), {
                 lineHeightFactor: 0,
                 baseline: "middle",
             });
@@ -184,24 +166,11 @@ export default class Page {
         }
     }
 
-    addRow(row: string[]) {
-        const columnCount = row.length;
-        let columns: ICell[] = [];
-        for (let i = 0; i < columnCount; i++) {
-            const cellContent = row[i];
-            const column: ICell = {
-                text: cellContent,
-                background: Colors.WHITE,
-                color: Colors.DARK_GREY,
-            };
-            columns.push(column);
-            this.updateColumnWidth(cellContent, i);
+    addRow(row: string[] | Row) {
+        if (row instanceof Row) {
+            this.rows.push(row);
+            return;
         }
-        let processedRow: IRow = {
-            columns,
-            isHeader: false,
-            rowHeight: 20,
-        };
-        this.rows.push(processedRow);
+        this.rows.push(new Row(row));
     }
 }
