@@ -1,6 +1,13 @@
 import jsPDF from "jspdf";
 import Colors from './enum/colors';
 import { Row } from "./Row";
+
+/**
+ *
+ *
+ * @export
+ * @class Page
+ */
 export default class Page {
     private rowHeight: number = 15;
     private columnWidth: number[];
@@ -30,16 +37,36 @@ export default class Page {
         const currentPageInfo: JsPDF_X.ICurrentPageInfo = this.doc.internal.getCurrentPageInfo();
         this.pageWidth = currentPageInfo.pageContext.mediaBox.topRightX / 1.33;
     }
-
+    /**
+     * Updates the header for the page. 
+     * This has to be triggered before calling writeToPdf()
+     *
+     * @param {ICell[]} header
+     * @memberof Page
+     */
     setHeaders(header: ICell[]) {
         this.header = header;
     }
 
+    /**
+     * Updates the column's width for the page
+     * This has to be triggered before calling writeToPdf()
+     *
+     * @param {number[]} columnWidth
+     * @memberof Page
+     */
     setColumnWidth(columnWidth: number[]) {
         this.columnWidth = columnWidth;
     }
 
-    private getColumnPositions() {
+    /**
+     * Calculates the column start positions
+     *
+     * @private
+     * @returns {number[]} Array of number specifies the position for each column
+     * @memberof Page
+     */
+    private getColumnPositions(): number[] {
         const { left: leftMargin } = this.configuration.margin;
         let start = leftMargin;
         return this.columnWidth.map(width => {
@@ -49,6 +76,14 @@ export default class Page {
         });
     }
 
+    /**
+     * Checks for wheather the page should be splitted for excessive columns
+     *
+     * @private
+     * @param {number[]} columnPosition
+     * @returns {boolean} Whether the page should be splitted for excessive columns
+     * @memberof Page
+     */
     private shouldSplitColumns(columnPosition: number[]) {
         for (let i = 0; i < columnPosition.length; i++) {
             if (columnPosition[i] + this.columnWidth[i] > this.pageWidth) {
@@ -58,6 +93,14 @@ export default class Page {
         return false;
     }
 
+    /**
+     * Generates separate pages for additional column having the first column and header
+     * as fixed in every other page.
+     *
+     * @private
+     * @returns {Page[]}
+     * @memberof Page
+     */
     private getColumnSplittedPages() {
         const { left: leftMargin, right: rightMargin, } = this.configuration.margin;
         const columnPosition = this.getColumnPositions();
@@ -77,28 +120,36 @@ export default class Page {
             let columnPos = columnPosition[0] + this.columnWidth[0] + leftMargin;
             for (let j = 1; j < columnPosition.length; j++) {
                 const availableWidth = this.pageWidth - firstCellWidth - leftMargin - rightMargin;
+                // When the column start position exceeds the available width
+                // create a new page and reset the header, columnWidth and columns
                 if (columnPos + this.columnWidth[j] > availableWidth) {
+
+                    // Update the data for the current page
                     pages[pageIndex].addRow(row);
                     pages[pageIndex].setHeaders(header);
                     pages[pageIndex].setColumnWidth(columnWidth);
 
-                    // Create new page and reset the row
+                    // Create new page
                     pageIndex++;
                     if (!pages[pageIndex]) {
                         const page = new Page(this.doc);
                         pages[pageIndex] = page;
                     }
+
+                    // Reset the data for next page
                     columnPos = firstCellWidth;
                     row = new Row();
                     row.addColumn(this.rows[i].columns[0]);
                     header = [this.header[0]];
                     columnWidth = [this.columnWidth[0]];
                 }
+                // Keep the track of data to be written in current page
                 columnPos += this.columnWidth[j];
                 row.addColumn(this.rows[i].columns[j]);
                 header.push(this.header[j]);
                 columnWidth.push(this.columnWidth[j]);
             }
+            // Update the data for last page
             pages[pageIndex].addRow(row);
             pages[pageIndex].setHeaders(header);
             pages[pageIndex].setColumnWidth(columnWidth);
@@ -106,7 +157,12 @@ export default class Page {
         return pages;
     }
 
-
+    /**
+     * Writes the page as table to the pdf
+     *
+     * @returns
+     * @memberof Page
+     */
     writeToPdf() {
         if (this.columnWidth.length === 0) {
             throw new Error("Column width not available: Did you forget to call page.setColumnWidth()?");
@@ -166,6 +222,15 @@ export default class Page {
         }
     }
 
+    /**
+     * Adds a new row to the page.
+     * Note: It doesn't write to pdf.
+     * TO-DO: Revist, so that it can write directly to pdf to improve the performance.
+     *
+     * @param {(string[] | Row)} row
+     * @returns
+     * @memberof Page
+     */
     addRow(row: string[] | Row) {
         if (row instanceof Row) {
             this.rows.push(row);

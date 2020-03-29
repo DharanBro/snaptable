@@ -40,7 +40,18 @@ export default class SnapTable {
         this.pageHeight = currentPageInfo.pageContext.mediaBox.topRightY / 1.33;
     }
 
-    populatePagesAndColumnWidth(data: ITableData): Page[] {
+    /**
+     * Generates the pages based on the page height and individual row height.
+     * Also it calculates the column width using `string-pixel-width` library
+     * and stores it internally which will be used later for page split based 
+     * on the number of columns and page width.
+     *
+     * @private
+     * @param {ITableData} data
+     * @returns {Page[]}
+     * @memberof SnapTable
+     */
+    private populatePagesAndColumnWidth(data: ITableData): Page[] {
         const pages: Page[] = [];
         let header: ICell[];
         if (typeof data.head[0] === "string") {
@@ -95,6 +106,12 @@ export default class SnapTable {
         return pages;
     }
 
+    /**
+     * Writes the provided data in table format
+     *
+     * @param {ITableData} data
+     * @memberof SnapTable
+     */
     writeTable(data: ITableData) {
         const pages = this.populatePagesAndColumnWidth(data);
         for (let i = 0; i < pages.length; i++) {

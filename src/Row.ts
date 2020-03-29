@@ -26,6 +26,13 @@ export class Row {
         this.columns = row.columns;
         this.rowSpan = row.rowSpan;
     }
+    /**
+     * Adds single column to the Row
+     *
+     * @param {(string | ICell)} column
+     * @returns
+     * @memberof Row
+     */
     addColumn(column: string | ICell) {
         if (typeof column === "string") {
             this.columns.push({
