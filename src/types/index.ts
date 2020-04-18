@@ -1,19 +1,19 @@
-declare module 'string-pixel-width';
-interface ICell {
+/* eslint-disable @typescript-eslint/no-namespace */
+export interface ICell {
     text: string;
     background: string;
     color: string;
     cellSpan?: number;
 }
 
-interface IRow {
+export interface IRow {
     isHeader: boolean;
     rowHeight: number;
     columns: ICell[];
     rowSpan?: number;
 }
 
-interface IPageConfiguration {
+export interface IPageConfiguration {
     pageNumber: {
         enabled: boolean;
         hPosition: 'CENTER' | 'LEFT' | 'RIGHT';
@@ -27,7 +27,7 @@ interface IPageConfiguration {
     };
 }
 
-interface IPage {
+export interface IPage {
     configuration: IPageConfiguration;
     columnCount: number;
     rowCount: number;
@@ -36,15 +36,15 @@ interface IPage {
     data: IRow[];
 }
 
-namespace JsPDF_X {
-    interface IMediaBox {
+export namespace JsPDFX {
+    export interface IMediaBox {
         bottomLeftX: number;
         bottomLeftY: number;
         topRightX: number;
         topRightY: number;
     }
 
-    interface IPageContext {
+    export interface IPageContext {
         objId: number;
         contentsObjId: number;
         userUnit: number;
@@ -56,10 +56,9 @@ namespace JsPDF_X {
         annotations: any[];
     }
 
-    interface ICurrentPageInfo {
+    export interface ICurrentPageInfo {
         objId: number;
         pageNumber: number;
         pageContext: IPageContext;
     }
-
 }

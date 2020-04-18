@@ -1,6 +1,7 @@
-import jsPDF from "jspdf";
+import jsPDF from 'jspdf';
 import Colors from './enum/colors';
-import { Row } from "./Row";
+import Row from './Row';
+import { ICell, IPageConfiguration, JsPDFX } from './types';
 
 /**
  *
@@ -9,7 +10,7 @@ import { Row } from "./Row";
  * @class Page
  */
 export default class Page {
-    private rowHeight: number = 15;
+    private rowHeight = 15;
     private columnWidth: number[];
     private header: ICell[];
     private rows: Row[];
@@ -26,7 +27,7 @@ export default class Page {
             right: 10,
             top: 10,
             bottom: 10,
-        }
+        },
     };
 
     constructor(doc: jsPDF, header?: ICell[], configuration?: IPageConfiguration) {
@@ -34,17 +35,17 @@ export default class Page {
         this.rows = [];
         this.doc = doc;
         this.header = header || [];
-        const currentPageInfo: JsPDF_X.ICurrentPageInfo = this.doc.internal.getCurrentPageInfo();
+        const currentPageInfo: JsPDFX.ICurrentPageInfo = this.doc.internal.getCurrentPageInfo();
         this.pageWidth = currentPageInfo.pageContext.mediaBox.topRightX / 1.33;
     }
     /**
-     * Updates the header for the page. 
+     * Updates the header for the page.
      * This has to be triggered before calling writeToPdf()
      *
      * @param {ICell[]} header
      * @memberof Page
      */
-    setHeaders(header: ICell[]) {
+    setHeaders(header: ICell[]): void {
         this.header = header;
     }
 
@@ -55,7 +56,7 @@ export default class Page {
      * @param {number[]} columnWidth
      * @memberof Page
      */
-    setColumnWidth(columnWidth: number[]) {
+    setColumnWidth(columnWidth: number[]): void {
         this.columnWidth = columnWidth;
     }
 
@@ -69,8 +70,8 @@ export default class Page {
     private getColumnPositions(): number[] {
         const { left: leftMargin } = this.configuration.margin;
         let start = leftMargin;
-        return this.columnWidth.map(width => {
-            let position = start;
+        return this.columnWidth.map((width) => {
+            const position = start;
             start += width + 10;
             return position + 2;
         });
@@ -84,7 +85,7 @@ export default class Page {
      * @returns {boolean} Whether the page should be splitted for excessive columns
      * @memberof Page
      */
-    private shouldSplitColumns(columnPosition: number[]) {
+    private shouldSplitColumns(columnPosition: number[]): boolean {
         for (let i = 0; i < columnPosition.length; i++) {
             if (columnPosition[i] + this.columnWidth[i] > this.pageWidth) {
                 return true;
@@ -101,8 +102,8 @@ export default class Page {
      * @returns {Page[]}
      * @memberof Page
      */
-    private getColumnSplittedPages() {
-        const { left: leftMargin, right: rightMargin, } = this.configuration.margin;
+    private getColumnSplittedPages(): Page[] {
+        const { left: leftMargin, right: rightMargin } = this.configuration.margin;
         const columnPosition = this.getColumnPositions();
         const pages: Page[] = [];
 
@@ -111,7 +112,7 @@ export default class Page {
 
         for (let i = 0; i < this.rows.length; i++) {
             let pageIndex = 0;
-            let row: Row = new Row();
+            let row = new Row();
             row.addColumn(this.rows[i].columns[0]);
 
             let columnWidth: number[] = [this.columnWidth[0]];
@@ -123,7 +124,6 @@ export default class Page {
                 // When the column start position exceeds the available width
                 // create a new page and reset the header, columnWidth and columns
                 if (columnPos + this.columnWidth[j] > availableWidth) {
-
                     // Update the data for the current page
                     pages[pageIndex].addRow(row);
                     pages[pageIndex].setHeaders(header);
@@ -163,9 +163,9 @@ export default class Page {
      * @returns
      * @memberof Page
      */
-    writeToPdf() {
+    writeToPdf(): void {
         if (this.columnWidth.length === 0) {
-            throw new Error("Column width not available: Did you forget to call page.setColumnWidth()?");
+            throw new Error('Column width not available: Did you forget to call page.setColumnWidth()?');
         }
         const columnPosition = this.getColumnPositions();
         if (this.shouldSplitColumns(columnPosition)) {
@@ -178,14 +178,14 @@ export default class Page {
         }
         this.doc.addPage();
         this.doc.setFontSize(10);
-        const { left: leftMargin, right: rightMargin, top: topMargin, } = this.configuration.margin;
+        const { left: leftMargin, right: rightMargin, top: topMargin } = this.configuration.margin;
 
-        const drawRowRect = (y: number, style: string = 'S') => {
+        const drawRowRect = (y: number, style = 'S'): void => {
             this.doc.rect(leftMargin, y, this.pageWidth - leftMargin - rightMargin, this.rowHeight, style);
-        }
+        };
 
         // Print Header
-        let y = topMargin;
+        const y = topMargin;
         this.doc.setFillColor(Colors.STEEL_BLUE);
         this.doc.setDrawColor(Colors.STEEL_BLUE);
         this.doc.setTextColor(Colors.WHITE);
@@ -193,11 +193,11 @@ export default class Page {
         drawRowRect(y, 'FD');
         for (let i = 0; i < this.header.length; i++) {
             const x = columnPosition[i];
-            let column = this.header[i];
+            const column = this.header[i];
             console.log(column);
-            this.doc.text(column.text, x, y + (15 / 2), {
+            this.doc.text(column.text, x, y + 15 / 2, {
                 lineHeightFactor: 0,
-                baseline: "middle",
+                baseline: 'middle',
             });
         }
 
@@ -207,16 +207,16 @@ export default class Page {
         this.doc.setTextColor(Colors.DARK_GREY);
         for (let j = 0; j < this.rows.length; j++) {
             const row = this.rows[j];
-            let y = (this.rowHeight * j) + topMargin + 15; // 15 is header row height
+            const y = this.rowHeight * j + topMargin + 15; // 15 is header row height
             const { columns } = row;
             drawRowRect(y);
             // Print column cells
             for (let j = 0; j < columns.length; j++) {
                 const x = columnPosition[j];
-                let column = columns[j];
-                this.doc.text(column.text, x, y + (this.rowHeight / 2), {
+                const column = columns[j];
+                this.doc.text(column.text, x, y + this.rowHeight / 2, {
                     lineHeightFactor: 0,
-                    baseline: "middle",
+                    baseline: 'middle',
                 });
             }
         }
@@ -231,7 +231,7 @@ export default class Page {
      * @returns
      * @memberof Page
      */
-    addRow(row: string[] | Row) {
+    addRow(row: string[] | Row): void {
         if (row instanceof Row) {
             this.rows.push(row);
             return;

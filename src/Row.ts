@@ -1,5 +1,6 @@
 import Colors from './enum/colors';
-export class Row {
+import { ICell, IRow } from './types';
+export default class Row {
     isHeader: boolean;
     rowHeight: number;
     columns: ICell[];
@@ -12,7 +13,7 @@ export class Row {
             return;
         }
         if (Array.isArray(row)) {
-            this.columns = row.map(col => {
+            this.columns = row.map((col) => {
                 return {
                     background: Colors.WHITE,
                     color: Colors.DARK_GREY,
@@ -34,7 +35,7 @@ export class Row {
      * @memberof Row
      */
     addColumn(column: string | ICell) {
-        if (typeof column === "string") {
+        if (typeof column === 'string') {
             this.columns.push({
                 background: Colors.WHITE,
                 color: Colors.DARK_GREY,
