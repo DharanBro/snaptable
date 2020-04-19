@@ -3,6 +3,7 @@ import Page from './Page';
 import pixelWidth from 'string-pixel-width';
 import Row from './Row';
 import Colors from './enum/colors';
+import JspdfUtils from './JspdfUtils';
 import { ICell, IRow, IPageConfiguration, JsPDFX } from './types';
 
 export type ITableData = {
@@ -115,5 +116,8 @@ export default class SnapTable {
             pages[i].setColumnWidth(this.columnWidth);
             pages[i].writeToPdf();
         }
+
+        const currentPage = JspdfUtils.getCurrentPageNumber(this.doc);
+        this.doc.deletePage(currentPage);
     }
 }

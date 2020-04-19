@@ -176,7 +176,6 @@ export default class Page {
             }
             return;
         }
-        this.doc.addPage();
         this.doc.setFontSize(10);
         const { left: leftMargin, right: rightMargin, top: topMargin } = this.configuration.margin;
 
@@ -220,6 +219,8 @@ export default class Page {
                 });
             }
         }
+
+        this.doc.addPage();
     }
 
     /**
