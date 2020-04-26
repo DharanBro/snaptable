@@ -1,0 +1,11 @@
+html {
+    height: 100%;
+}
+
+body {
+    height: calc(100% - 16px);
+}
+
+#root {
+    height: 100%;
+}
