@@ -10,7 +10,7 @@ export default class Cell {
     background: string;
     color: string;
     text: string;
-    constructor(cell: string | ICell) {
+    constructor(cell: string | ICell, isHeaderCell = false) {
         if (typeof cell === 'string') {
             this.background = Colors.WHITE;
             this.color = Colors.DARK_GREY;
@@ -19,6 +19,10 @@ export default class Cell {
             this.text = cell.text;
             this.background = cell.background;
             this.color = cell.color;
+        }
+        if (isHeaderCell) {
+            this.background = Colors.STEEL_BLUE;
+            this.color = Colors.WHITE;
         }
     }
 }

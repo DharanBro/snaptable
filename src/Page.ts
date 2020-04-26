@@ -1,8 +1,8 @@
 import jsPDF from 'jspdf';
-import Colors from './enum/colors';
 import Row from './Row';
-import { ICell, IPageConfiguration, JsPDFX } from './types';
+import { JsPDFX, IMergedConfiguration } from './types';
 import Cell from './Cell';
+import Utils from './Utils';
 
 /**
  *
@@ -17,28 +17,17 @@ export default class Page {
     private rows: Row[];
     private doc: jsPDF;
     private pageWidth: number;
-    configuration: IPageConfiguration = {
-        pageNumber: {
-            enabled: false,
-            hPosition: 'RIGHT',
-            vPosition: 'BOTTOM',
-        },
-        margin: {
-            left: 10,
-            right: 10,
-            top: 10,
-            bottom: 10,
-        },
-        borderColor: Colors.DARK_GREY,
-    };
 
-    constructor(doc: jsPDF, header?: Cell[], configuration?: IPageConfiguration) {
+    private mergedConfig: IMergedConfiguration;
+
+    constructor(doc: jsPDF, configuration: IMergedConfiguration, header?: Cell[]) {
         this.columnWidth = [];
         this.rows = [];
         this.doc = doc;
         this.header = header || [];
         const currentPageInfo: JsPDFX.ICurrentPageInfo = this.doc.internal.getCurrentPageInfo();
-        this.pageWidth = currentPageInfo.pageContext.mediaBox.topRightX / 1.33;
+        this.pageWidth = Utils.toPts(currentPageInfo.pageContext.mediaBox.topRightX);
+        this.mergedConfig = configuration;
     }
     /**
      * Updates the header for the page.
@@ -70,7 +59,7 @@ export default class Page {
      * @memberof Page
      */
     private getColumnPositions(): number[] {
-        const { left: leftMargin } = this.configuration.margin;
+        const { left: leftMargin } = this.mergedConfig.margin!;
         let start = leftMargin;
         return this.columnWidth.map((width) => {
             const position = start;
@@ -105,11 +94,11 @@ export default class Page {
      * @memberof Page
      */
     private getColumnSplittedPages(): Page[] {
-        const { left: leftMargin, right: rightMargin } = this.configuration.margin;
+        const { left: leftMargin, right: rightMargin } = this.mergedConfig.margin!;
         const columnPosition = this.getColumnPositions();
         const pages: Page[] = [];
 
-        const page: Page = new Page(this.doc);
+        const page: Page = new Page(this.doc, this.mergedConfig);
         pages.push(page);
 
         for (let i = 0; i < this.rows.length; i++) {
@@ -134,7 +123,7 @@ export default class Page {
                     // Create new page
                     pageIndex++;
                     if (!pages[pageIndex]) {
-                        const page = new Page(this.doc);
+                        const page = new Page(this.doc, this.mergedConfig);
                         pages[pageIndex] = page;
                     }
 
@@ -159,20 +148,13 @@ export default class Page {
         return pages;
     }
 
-    /**
-     * Write a row to the PDF
-     *
-     * @private
-     * @param {Row} row
-     * @param {number} rowIndex
-     * @param {number[]} columnPosition
-     * @memberof Page
-     */
-    private writeContentRow(row: Row, rowIndex: number, columnPosition: number[]): void {
-        const { right: rightMargin, top: topMargin } = this.configuration.margin;
-        const y = this.rowHeight * rowIndex + topMargin + 15; // 15 is header row height
-        const { columns } = row;
+    private writeCell(cell: Cell, cellIndex: number, columnPosition: number[], rowPosition: number) {
+        let { left: leftPadding } = this.mergedConfig.cellPadding;
+        leftPadding = Utils.toPts(leftPadding);
 
+        const x = columnPosition[cellIndex];
+        const y = rowPosition;
+        const { right: rightMargin, top: topMargin } = this.mergedConfig.margin!;
         const drawCellRect = (x: number, y: number, cellWidth: number, style = 'S'): void => {
             this.doc.rect(x, y, cellWidth, this.rowHeight, style);
         };
@@ -188,21 +170,37 @@ export default class Page {
             return this.columnWidth[columnIndex];
         };
 
+
+        this.doc.setFillColor(cell.background);
+        this.doc.setDrawColor(this.mergedConfig.borderColor!);
+        this.doc.setTextColor(cell.color);
+
+        drawCellRect(x, y, getColumnWidth(cellIndex), 'FD');
+        this.doc.text(cell.text, x + leftPadding, y + this.rowHeight / 2, {
+            lineHeightFactor: 0,
+            baseline: 'middle',
+        });
+    }
+
+    /**
+     * Write a row to the PDF
+     *
+     * @private
+     * @param {Row} row
+     * @param {number} rowIndex
+     * @param {number[]} columnPosition
+     * @memberof Page
+     */
+    private writeContentRow(row: Row, rowIndex: number, columnPosition: number[]): void {
+        const { right: rightMargin, top: topMargin } = this.mergedConfig.margin!;
+        const y = this.rowHeight * rowIndex + topMargin + 15; // 15 is header row height
+        const { columns } = row;
+
         // Print column cells
         for (let j = 0; j < columns.length; j++) {
-            const x = columnPosition[j];
             const column = columns[j];
-            console.log(column.background);
 
-            this.doc.setFillColor(column.background);
-            this.doc.setDrawColor(this.configuration.borderColor!);
-            this.doc.setTextColor(column.color);
-
-            drawCellRect(x, y, getColumnWidth(j), 'FD');
-            this.doc.text(column.text, x, y + this.rowHeight / 2, {
-                lineHeightFactor: 0,
-                baseline: 'middle',
-            });
+            this.writeCell(column, j, columnPosition, y);
         }
     }
 
@@ -214,7 +212,7 @@ export default class Page {
      * @memberof Page
      */
     private writeHeader(columnPosition: number[]): void {
-        const { left: leftMargin, right: rightMargin, top: topMargin } = this.configuration.margin;
+        const { left: leftMargin, right: rightMargin, top: topMargin } = this.mergedConfig.margin!;
 
         const getTableWidth = (): number => {
             return this.pageWidth - leftMargin - rightMargin;
@@ -226,18 +224,10 @@ export default class Page {
 
         // Print Header
         const y = topMargin;
-        this.doc.setFillColor(Colors.STEEL_BLUE);
-        this.doc.setDrawColor(Colors.STEEL_BLUE);
-        this.doc.setTextColor(Colors.WHITE);
-
-        drawRowRect(y, 'FD');
         for (let i = 0; i < this.header.length; i++) {
             const x = columnPosition[i];
             const column = this.header[i];
-            this.doc.text(column.text, x, y + 15 / 2, {
-                lineHeightFactor: 0,
-                baseline: 'middle',
-            });
+            this.writeCell(column, i, columnPosition, y);
         }
     }
 

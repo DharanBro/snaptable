@@ -4,7 +4,10 @@ import pixelWidth from 'string-pixel-width';
 import Row from './Row';
 import Colors from './enum/colors';
 import JspdfUtils from './JspdfUtils';
-import { ICell, IRow, IPageConfiguration, JsPDFX } from './types';
+import { ICell, IRow, IPageConfiguration, JsPDFX, IInternalConfiguration, IMergedConfiguration } from './types';
+import merge from 'lodash.merge';
+import Cell from './Cell';
+import Utils from './Utils';
 
 export type ITableData = {
     head: ICell[] | string[];
@@ -20,6 +23,15 @@ export default class SnapTable {
     rowHeight = 15;
     columnWidth: number[] = [];
 
+    private mergedConfiguration: IMergedConfiguration;
+
+    private internalConfig: IInternalConfiguration = {
+        cellPadding: {
+            left: 5,
+            right: 10,
+        }
+    };
+
     // TO-DO: Review the usage of configuration
     configuration: IPageConfiguration = {
         pageNumber: {
@@ -33,13 +45,16 @@ export default class SnapTable {
             top: 10,
             bottom: 10,
         },
+        borderColor: Colors.DARK_GREY,
     };
 
-    constructor(doc: jsPDF) {
+    constructor(doc: jsPDF, configuration: IPageConfiguration) {
         this.doc = doc;
         const currentPageInfo: JsPDFX.ICurrentPageInfo = this.doc.internal.getCurrentPageInfo();
-        this.pageWidth = currentPageInfo.pageContext.mediaBox.topRightX / 1.33;
-        this.pageHeight = currentPageInfo.pageContext.mediaBox.topRightY / 1.33;
+        this.pageWidth = Utils.toPts(currentPageInfo.pageContext.mediaBox.topRightX);
+        this.pageHeight = Utils.toPts(currentPageInfo.pageContext.mediaBox.topRightY);
+        this.mergedConfiguration = merge({}, this.configuration, configuration, this.internalConfig);
+        console.log(this.mergedConfiguration);
     }
 
     /**
@@ -55,23 +70,16 @@ export default class SnapTable {
      */
     private populatePagesAndColumnWidth(data: ITableData): Page[] {
         const pages: Page[] = [];
-        let header: ICell[];
-        if (typeof data.head[0] === 'string') {
-            header = (data.head as string[]).map((cell: string) => {
-                return {
-                    text: cell,
-                    background: Colors.WHITE,
-                    color: Colors.DARK_GREY,
-                };
-            });
-        } else {
-            header = data.head as ICell[];
-        }
+        let header: Cell[];
+        header = (data.head as any[]).map((cell: string | ICell) => {
+            return new Cell(cell, true);
+        });
         const rows = data.body;
         let contentHeight = this.headerHeight; // Start with height of header
-        const { top: topMargin, bottom: bottomMargin } = this.configuration.margin;
+        const { top: topMargin, bottom: bottomMargin } = this.mergedConfiguration.margin!;
+        const { right: rightPadding, left: leftPadding } = this.mergedConfiguration.cellPadding!;
 
-        let page = new Page(this.doc, header);
+        let page = new Page(this.doc, this.mergedConfiguration, header);
         pages.push(page);
         for (let i = 0; i < rows.length; i++) {
             const row = new Row(rows[i]);
@@ -82,7 +90,7 @@ export default class SnapTable {
             }
             for (let j = 0; j < columns.length; j++) {
                 const column = columns[j];
-                const width = (pixelWidth(column.text, { size: 10 }) / 1.33) + 10; // 10 is for right padding
+                const width = Utils.toPts((pixelWidth(column.text, { size: 10 }) + rightPadding + leftPadding));
                 if (this.columnWidth[j] !== undefined) {
                     if (width > this.columnWidth[j]) {
                         this.columnWidth[j] = width;
@@ -96,7 +104,7 @@ export default class SnapTable {
 
             if (contentHeight > this.pageHeight - topMargin - bottomMargin - this.headerHeight) {
                 contentHeight = 0;
-                page = new Page(this.doc, header);
+                page = new Page(this.doc, this.mergedConfiguration, header);
                 pages.push(page);
             }
             page.addRow(row);

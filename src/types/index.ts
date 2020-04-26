@@ -16,12 +16,12 @@ export interface IRow {
 }
 
 export interface IPageConfiguration {
-    pageNumber: {
+    pageNumber?: {
         enabled: boolean;
         hPosition: 'CENTER' | 'LEFT' | 'RIGHT';
         vPosition: 'TOP' | 'BOTTOM';
     };
-    margin: {
+    margin?: {
         left: number;
         right: number;
         top: number;
@@ -29,6 +29,15 @@ export interface IPageConfiguration {
     };
     borderColor?: string;
 }
+
+export interface IInternalConfiguration {
+    cellPadding: {
+        left: number,
+        right: number,
+    }
+}
+
+export type IMergedConfiguration = IPageConfiguration & IInternalConfiguration;
 
 export interface IPage {
     configuration: IPageConfiguration;
