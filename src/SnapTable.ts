@@ -82,7 +82,7 @@ export default class SnapTable {
             }
             for (let j = 0; j < columns.length; j++) {
                 const column = columns[j];
-                const width = pixelWidth(column.text, { size: 10 }) / 1.33;
+                const width = (pixelWidth(column.text, { size: 10 }) / 1.33) + 10; // 10 is for right padding
                 if (this.columnWidth[j] !== undefined) {
                     if (width > this.columnWidth[j]) {
                         this.columnWidth[j] = width;
