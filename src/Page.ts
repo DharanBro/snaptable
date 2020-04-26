@@ -148,7 +148,17 @@ export default class Page {
         return pages;
     }
 
-    private writeCell(cell: Cell, cellIndex: number, columnPosition: number[], rowPosition: number) {
+    /**
+     *  Writes a cell to PDF
+     *
+     * @private
+     * @param {Cell} cell
+     * @param {number} cellIndex
+     * @param {number[]} columnPosition
+     * @param {number} rowPosition
+     * @memberof Page
+     */
+    private writeCell(cell: Cell, cellIndex: number, columnPosition: number[], rowPosition: number): void {
         let { left: leftPadding } = this.mergedConfig.cellPadding;
         leftPadding = Utils.toPts(leftPadding);
 
