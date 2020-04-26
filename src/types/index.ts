@@ -1,3 +1,5 @@
+import Cell from "../Cell";
+
 /* eslint-disable @typescript-eslint/no-namespace */
 export interface ICell {
     text: string;
@@ -9,7 +11,7 @@ export interface ICell {
 export interface IRow {
     isHeader: boolean;
     rowHeight: number;
-    columns: ICell[];
+    columns: Cell[];
     rowSpan?: number;
 }
 
@@ -25,6 +27,7 @@ export interface IPageConfiguration {
         top: number;
         bottom: number;
     };
+    borderColor?: string;
 }
 
 export interface IPage {

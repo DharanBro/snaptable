@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import Colors from './enum/colors';
 import Row from './Row';
 import { ICell, IPageConfiguration, JsPDFX } from './types';
+import Cell from './Cell';
 
 /**
  *
@@ -12,7 +13,7 @@ import { ICell, IPageConfiguration, JsPDFX } from './types';
 export default class Page {
     private rowHeight = 15;
     private columnWidth: number[];
-    private header: ICell[];
+    private header: Cell[];
     private rows: Row[];
     private doc: jsPDF;
     private pageWidth: number;
@@ -28,9 +29,10 @@ export default class Page {
             top: 10,
             bottom: 10,
         },
+        borderColor: Colors.DARK_GREY,
     };
 
-    constructor(doc: jsPDF, header?: ICell[], configuration?: IPageConfiguration) {
+    constructor(doc: jsPDF, header?: Cell[], configuration?: IPageConfiguration) {
         this.columnWidth = [];
         this.rows = [];
         this.doc = doc;
@@ -42,10 +44,10 @@ export default class Page {
      * Updates the header for the page.
      * This has to be triggered before calling writeToPdf()
      *
-     * @param {ICell[]} header
+     * @param {Cell[]} header
      * @memberof Page
      */
-    setHeaders(header: ICell[]): void {
+    setHeaders(header: Cell[]): void {
         this.header = header;
     }
 
@@ -72,8 +74,8 @@ export default class Page {
         let start = leftMargin;
         return this.columnWidth.map((width) => {
             const position = start;
-            start += width + 10;
-            return position + 2;
+            start += width;
+            return position;
         });
     }
 
@@ -116,7 +118,7 @@ export default class Page {
             row.addColumn(this.rows[i].columns[0]);
 
             let columnWidth: number[] = [this.columnWidth[0]];
-            let header: ICell[] = [this.header[0]];
+            let header: Cell[] = [this.header[0]];
             const firstCellWidth = this.columnWidth[0];
             let columnPos = columnPosition[0] + this.columnWidth[0] + leftMargin;
             for (let j = 1; j < columnPosition.length; j++) {
@@ -158,6 +160,88 @@ export default class Page {
     }
 
     /**
+     * Write a row to the PDF
+     *
+     * @private
+     * @param {Row} row
+     * @param {number} rowIndex
+     * @param {number[]} columnPosition
+     * @memberof Page
+     */
+    private writeContentRow(row: Row, rowIndex: number, columnPosition: number[]): void {
+        const { right: rightMargin, top: topMargin } = this.configuration.margin;
+        const y = this.rowHeight * rowIndex + topMargin + 15; // 15 is header row height
+        const { columns } = row;
+
+        const drawCellRect = (x: number, y: number, cellWidth: number, style = 'S'): void => {
+            this.doc.rect(x, y, cellWidth, this.rowHeight, style);
+        };
+
+        const isLastColumn = (columnIndex): boolean => {
+            return columnPosition.length === columnIndex + 1;
+        };
+
+        const getColumnWidth = (columnIndex: number): number => {
+            if (isLastColumn(columnIndex)) {
+                return this.pageWidth - rightMargin - columnPosition[columnIndex];
+            }
+            return this.columnWidth[columnIndex];
+        };
+
+        // Print column cells
+        for (let j = 0; j < columns.length; j++) {
+            const x = columnPosition[j];
+            const column = columns[j];
+            console.log(column.background);
+
+            this.doc.setFillColor(column.background);
+            this.doc.setDrawColor(this.configuration.borderColor!);
+            this.doc.setTextColor(column.color);
+
+            drawCellRect(x, y, getColumnWidth(j), 'FD');
+            this.doc.text(column.text, x, y + this.rowHeight / 2, {
+                lineHeightFactor: 0,
+                baseline: 'middle',
+            });
+        }
+    }
+
+    /**
+     * Writes the header to the PDF
+     *
+     * @private
+     * @param {number[]} columnPosition
+     * @memberof Page
+     */
+    private writeHeader(columnPosition: number[]): void {
+        const { left: leftMargin, right: rightMargin, top: topMargin } = this.configuration.margin;
+
+        const getTableWidth = (): number => {
+            return this.pageWidth - leftMargin - rightMargin;
+        };
+
+        const drawRowRect = (y: number, style = 'S'): void => {
+            this.doc.rect(leftMargin, y, getTableWidth(), this.rowHeight, style);
+        };
+
+        // Print Header
+        const y = topMargin;
+        this.doc.setFillColor(Colors.STEEL_BLUE);
+        this.doc.setDrawColor(Colors.STEEL_BLUE);
+        this.doc.setTextColor(Colors.WHITE);
+
+        drawRowRect(y, 'FD');
+        for (let i = 0; i < this.header.length; i++) {
+            const x = columnPosition[i];
+            const column = this.header[i];
+            this.doc.text(column.text, x, y + 15 / 2, {
+                lineHeightFactor: 0,
+                baseline: 'middle',
+            });
+        }
+    }
+
+    /**
      * Writes the page as table to the pdf
      *
      * @returns
@@ -176,50 +260,18 @@ export default class Page {
             }
             return;
         }
-        this.doc.addPage();
+
         this.doc.setFontSize(10);
-        const { left: leftMargin, right: rightMargin, top: topMargin } = this.configuration.margin;
 
-        const drawRowRect = (y: number, style = 'S'): void => {
-            this.doc.rect(leftMargin, y, this.pageWidth - leftMargin - rightMargin, this.rowHeight, style);
-        };
-
-        // Print Header
-        const y = topMargin;
-        this.doc.setFillColor(Colors.STEEL_BLUE);
-        this.doc.setDrawColor(Colors.STEEL_BLUE);
-        this.doc.setTextColor(Colors.WHITE);
-
-        drawRowRect(y, 'FD');
-        for (let i = 0; i < this.header.length; i++) {
-            const x = columnPosition[i];
-            const column = this.header[i];
-            console.log(column);
-            this.doc.text(column.text, x, y + 15 / 2, {
-                lineHeightFactor: 0,
-                baseline: 'middle',
-            });
-        }
+        this.writeHeader(columnPosition);
 
         // Print rows
-        this.doc.setFillColor(Colors.WHITE);
-        this.doc.setDrawColor(Colors.DARK_GREY);
-        this.doc.setTextColor(Colors.DARK_GREY);
         for (let j = 0; j < this.rows.length; j++) {
             const row = this.rows[j];
-            const y = this.rowHeight * j + topMargin + 15; // 15 is header row height
-            const { columns } = row;
-            drawRowRect(y);
-            // Print column cells
-            for (let j = 0; j < columns.length; j++) {
-                const x = columnPosition[j];
-                const column = columns[j];
-                this.doc.text(column.text, x, y + this.rowHeight / 2, {
-                    lineHeightFactor: 0,
-                    baseline: 'middle',
-                });
-            }
+            this.writeContentRow(row, j, columnPosition);
         }
+
+        this.doc.addPage();
     }
 
     /**

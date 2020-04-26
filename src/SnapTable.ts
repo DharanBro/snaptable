@@ -3,6 +3,7 @@ import Page from './Page';
 import pixelWidth from 'string-pixel-width';
 import Row from './Row';
 import Colors from './enum/colors';
+import JspdfUtils from './JspdfUtils';
 import { ICell, IRow, IPageConfiguration, JsPDFX } from './types';
 
 export type ITableData = {
@@ -81,7 +82,7 @@ export default class SnapTable {
             }
             for (let j = 0; j < columns.length; j++) {
                 const column = columns[j];
-                const width = pixelWidth(column.text, { size: 10 }) / 1.33;
+                const width = (pixelWidth(column.text, { size: 10 }) / 1.33) + 10; // 10 is for right padding
                 if (this.columnWidth[j] !== undefined) {
                     if (width > this.columnWidth[j]) {
                         this.columnWidth[j] = width;
@@ -115,5 +116,8 @@ export default class SnapTable {
             pages[i].setColumnWidth(this.columnWidth);
             pages[i].writeToPdf();
         }
+
+        const currentPage = JspdfUtils.getCurrentPageNumber(this.doc);
+        this.doc.deletePage(currentPage);
     }
 }
