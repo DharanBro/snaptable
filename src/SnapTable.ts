@@ -4,10 +4,18 @@ import pixelWidth from 'string-pixel-width';
 import Row from './Row';
 import Colors from './enum/colors';
 import JspdfUtils from './JspdfUtils';
-import { ICell, IRow, IPageConfiguration, JsPDFX, IInternalConfiguration, IMergedConfiguration } from './types';
+import {
+    ICell,
+    IRow,
+    IPageConfiguration,
+    JsPDFX,
+    IInternalConfiguration,
+    IMergedConfiguration,
+    IDocProps,
+} from './types';
 import merge from 'lodash.merge';
 import Cell from './Cell';
-import Utils from './Utils';
+import UnitHelper from './UnitHelper';
 
 export type ITableData = {
     head: ICell[] | string[];
@@ -16,20 +24,21 @@ export type ITableData = {
 
 export default class SnapTable {
     doc: jsPDF;
-    pageWidth: number;
-    pageHeight: number;
 
-    headerHeight = 15;
-    rowHeight = 15;
     columnWidth: number[] = [];
 
     private mergedConfiguration: IMergedConfiguration;
 
+    private documentProperties: IDocProps;
+
     private internalConfig: IInternalConfiguration = {
         cellPadding: {
-            left: 5,
-            right: 10,
-        }
+            left: 2,
+            right: 4,
+        },
+        headerHeight: 15,
+        rowHeight: 15,
+        fontSize: 12,
     };
 
     // TO-DO: Review the usage of configuration
@@ -51,10 +60,17 @@ export default class SnapTable {
     constructor(doc: jsPDF, configuration: IPageConfiguration) {
         this.doc = doc;
         const currentPageInfo: JsPDFX.ICurrentPageInfo = this.doc.internal.getCurrentPageInfo();
-        this.pageWidth = Utils.toPts(currentPageInfo.pageContext.mediaBox.topRightX);
-        this.pageHeight = Utils.toPts(currentPageInfo.pageContext.mediaBox.topRightY);
+        let pageWidth = currentPageInfo.pageContext.mediaBox.topRightX;
+        let pageHeight = currentPageInfo.pageContext.mediaBox.topRightY;
+        const { scaleFactor } = doc.internal;
+
+        this.documentProperties = {
+            pageWidth,
+            pageHeight,
+            scaleFactor,
+        };
+
         this.mergedConfiguration = merge({}, this.configuration, configuration, this.internalConfig);
-        console.log(this.mergedConfiguration);
     }
 
     /**
@@ -69,28 +85,31 @@ export default class SnapTable {
      * @memberof SnapTable
      */
     private populatePagesAndColumnWidth(data: ITableData): Page[] {
+        const { margin, rowHeight, headerHeight, cellPadding, fontSize } = this.mergedConfiguration;
+        const { pageHeight } = this.documentProperties;
         const pages: Page[] = [];
         let header: Cell[];
         header = (data.head as any[]).map((cell: string | ICell) => {
             return new Cell(cell, true);
         });
         const rows = data.body;
-        let contentHeight = this.headerHeight; // Start with height of header
-        const { top: topMargin, bottom: bottomMargin } = this.mergedConfiguration.margin!;
-        const { right: rightPadding, left: leftPadding } = this.mergedConfiguration.cellPadding!;
+        let contentHeight = headerHeight; // Start with height of header
+        const { top: topMargin, bottom: bottomMargin } = margin!;
+        const { right: rightPadding, left: leftPadding } = cellPadding!;
 
-        let page = new Page(this.doc, this.mergedConfiguration, header);
+        let page = new Page(this.doc, this.documentProperties, this.mergedConfiguration, header);
         pages.push(page);
         for (let i = 0; i < rows.length; i++) {
             const row = new Row(rows[i]);
-            const rowHeight = row.rowHeight || this.rowHeight;
+            const currentRowHeight = row.rowHeight || rowHeight;
             const columns = row.columns;
             if (header.length !== columns.length) {
                 throw new Error("Inconsistent data: Number of headers doesn't match with all rows in content");
             }
             for (let j = 0; j < columns.length; j++) {
                 const column = columns[j];
-                const width = Utils.toPts((pixelWidth(column.text, { size: 10 }) + rightPadding + leftPadding));
+                const textWidth = pixelWidth(column.text, { size: fontSize });
+                const width = UnitHelper.convertPxToPt(textWidth) + rightPadding + leftPadding;
                 if (this.columnWidth[j] !== undefined) {
                     if (width > this.columnWidth[j]) {
                         this.columnWidth[j] = width;
@@ -100,11 +119,11 @@ export default class SnapTable {
                 }
             }
             // Split pages based on page height
-            contentHeight += rowHeight;
+            contentHeight += currentRowHeight;
 
-            if (contentHeight > this.pageHeight - topMargin - bottomMargin - this.headerHeight) {
+            if (contentHeight > pageHeight - topMargin - bottomMargin - headerHeight) {
                 contentHeight = 0;
-                page = new Page(this.doc, this.mergedConfiguration, header);
+                page = new Page(this.doc, this.documentProperties, this.mergedConfiguration, header);
                 pages.push(page);
             }
             page.addRow(row);

@@ -1,4 +1,4 @@
-import Cell from "../Cell";
+import Cell from '../Cell';
 
 /* eslint-disable @typescript-eslint/no-namespace */
 export interface ICell {
@@ -30,11 +30,20 @@ export interface IPageConfiguration {
     borderColor?: string;
 }
 
+export interface IDocProps {
+    scaleFactor: number;
+    pageWidth: number;
+    pageHeight: number;
+}
+
 export interface IInternalConfiguration {
     cellPadding: {
-        left: number,
-        right: number,
-    }
+        left: number;
+        right: number;
+    };
+    headerHeight: number;
+    rowHeight: number;
+    fontSize: number;
 }
 
 export type IMergedConfiguration = IPageConfiguration & IInternalConfiguration;

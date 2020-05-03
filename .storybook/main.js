@@ -1,3 +1,4 @@
+const webpackMerge = require('webpack-merge');
 const moduleRulesTs = {
     test: /\.ts?$/,
     exclude: /node_modules/,
@@ -16,8 +17,23 @@ const moduleRulesTs = {
 module.exports = {
     stories: ['../stories/**/*.stories.[tj]s'],
     webpackFinal: async config => {
-        config.module.rules.push(moduleRulesTs);
-        config.resolve.extensions.push('.ts');
-        return config;
+        const additionConfig = {
+            module: {
+                rules: [
+                    moduleRulesTs
+                ]
+            },
+            resolve: {
+                extensions: ['.ts']
+            },
+            devtool: "inline-source-map",
+            output: {
+                devtoolModuleFilenameTemplate(info) {
+                    return `file:///${info.absoluteResourcePath.replace(/\\/g, '/')}`;
+                },
+            }
+
+        }
+        return webpackMerge(config, additionConfig);
     },
 };

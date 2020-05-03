@@ -2,9 +2,10 @@ import { storiesOf } from "@storybook/html";
 import './style.css'
 import jsPDF from 'jspdf';
 import SnapTable from '../src/index.ts';
-import { data } from './data/simple'
-import { data as columnSplitData } from './data/columnSplit'
-import { data as customCellConfigData } from './data/customCellConfig'
+import { data } from './data/simple';
+import { data as columnSplitData } from './data/columnSplit';
+import { data as columnSplitDataTest } from './data/contentCrop';
+import { data as customCellConfigData } from './data/customCellConfig';
 
 function generatePDF(data) {
     const root = document.createElement('div');
@@ -16,9 +17,11 @@ function generatePDF(data) {
     obj.setAttribute('width', '100%');
     obj.setAttribute('height', '100%');
 
-    var doc = new jsPDF({ unit: "px" });
+    var doc = new jsPDF();
     const snapTable = new SnapTable(doc);
     snapTable.writeTable(data);
+
+
     var outputString = doc.output('datauristring');
 
     const embed = document.createElement('embed');
@@ -39,6 +42,10 @@ storiesOf("Demo").add("Simple", () => {
 
 storiesOf("Demo").add("Column Split", () => {
     return generatePDF(columnSplitData);
+});
+
+storiesOf("Demo").add("Crop Content", () => {
+    return generatePDF(columnSplitDataTest);
 });
 
 storiesOf("Demo").add("Custom Cell", () => {

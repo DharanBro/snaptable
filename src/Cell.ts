@@ -1,5 +1,5 @@
-import { ICell } from "./types";
-import Colors from './enum/colors'
+import { ICell } from './types';
+import Colors from './enum/colors';
 /**
  *
  *
@@ -10,6 +10,7 @@ export default class Cell {
     background: string;
     color: string;
     text: string;
+    truncatedText?: string;
     constructor(cell: string | ICell, isHeaderCell = false) {
         if (typeof cell === 'string') {
             this.background = Colors.WHITE;
@@ -24,5 +25,9 @@ export default class Cell {
             this.background = Colors.STEEL_BLUE;
             this.color = Colors.WHITE;
         }
+    }
+
+    setTruncatedText(text: string) {
+        this.truncatedText = text;
     }
 }

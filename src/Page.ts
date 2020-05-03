@@ -1,8 +1,9 @@
 import jsPDF from 'jspdf';
 import Row from './Row';
-import { JsPDFX, IMergedConfiguration } from './types';
+import { JsPDFX, IMergedConfiguration, IDocProps } from './types';
 import Cell from './Cell';
 import Utils from './Utils';
+import UnitHelper from './UnitHelper';
 
 /**
  *
@@ -11,23 +12,21 @@ import Utils from './Utils';
  * @class Page
  */
 export default class Page {
-    private rowHeight = 15;
     private columnWidth: number[];
     private header: Cell[];
     private rows: Row[];
     private doc: jsPDF;
-    private pageWidth: number;
 
     private mergedConfig: IMergedConfiguration;
+    private documentProperties: IDocProps;
 
-    constructor(doc: jsPDF, configuration: IMergedConfiguration, header?: Cell[]) {
+    constructor(doc: jsPDF, documentProps: IDocProps, configuration: IMergedConfiguration, header?: Cell[]) {
         this.columnWidth = [];
         this.rows = [];
         this.doc = doc;
         this.header = header || [];
-        const currentPageInfo: JsPDFX.ICurrentPageInfo = this.doc.internal.getCurrentPageInfo();
-        this.pageWidth = Utils.toPts(currentPageInfo.pageContext.mediaBox.topRightX);
         this.mergedConfig = configuration;
+        this.documentProperties = documentProps;
     }
     /**
      * Updates the header for the page.
@@ -48,7 +47,7 @@ export default class Page {
      * @memberof Page
      */
     setColumnWidth(columnWidth: number[]): void {
-        this.columnWidth = columnWidth;
+        this.columnWidth = [...columnWidth];
     }
 
     /**
@@ -78,7 +77,7 @@ export default class Page {
      */
     private shouldSplitColumns(columnPosition: number[]): boolean {
         for (let i = 0; i < columnPosition.length; i++) {
-            if (columnPosition[i] + this.columnWidth[i] > this.pageWidth) {
+            if (columnPosition[i] + this.columnWidth[i] > this.documentProperties.pageWidth) {
                 return true;
             }
         }
@@ -94,13 +93,13 @@ export default class Page {
      * @memberof Page
      */
     private getColumnSplittedPages(): Page[] {
-        const { left: leftMargin, right: rightMargin } = this.mergedConfig.margin!;
+        const { margin, cellPadding, fontSize } = this.mergedConfig;
+        const { left: leftMargin, right: rightMargin } = margin!;
+        const { left: leftPadding, right: rightPadding } = cellPadding!;
         const columnPosition = this.getColumnPositions();
         const pages: Page[] = [];
-
-        const page: Page = new Page(this.doc, this.mergedConfig);
+        const page: Page = new Page(this.doc, this.documentProperties, this.mergedConfig);
         pages.push(page);
-
         for (let i = 0; i < this.rows.length; i++) {
             let pageIndex = 0;
             let row = new Row();
@@ -110,33 +109,46 @@ export default class Page {
             let header: Cell[] = [this.header[0]];
             const firstCellWidth = this.columnWidth[0];
             let columnPos = columnPosition[0] + this.columnWidth[0] + leftMargin;
+            const availableWidth = this.documentProperties.pageWidth - firstCellWidth - leftMargin - rightMargin;
             for (let j = 1; j < columnPosition.length; j++) {
-                const availableWidth = this.pageWidth - firstCellWidth - leftMargin - rightMargin;
+                const column = this.rows[i].columns[j];
+
                 // When the column start position exceeds the available width
                 // create a new page and reset the header, columnWidth and columns
                 if (columnPos + this.columnWidth[j] > availableWidth) {
-                    // Update the data for the current page
-                    pages[pageIndex].addRow(row);
-                    pages[pageIndex].setHeaders(header);
-                    pages[pageIndex].setColumnWidth(columnWidth);
+                    if (j !== 1) {
+                        // Update the data for the current page
+                        pages[pageIndex].addRow(row);
+                        pages[pageIndex].setHeaders(header);
+                        pages[pageIndex].setColumnWidth(columnWidth);
 
-                    // Create new page
-                    pageIndex++;
-                    if (!pages[pageIndex]) {
-                        const page = new Page(this.doc, this.mergedConfig);
-                        pages[pageIndex] = page;
+                        // Create new page
+                        pageIndex++;
+                        if (!pages[pageIndex]) {
+                            const page = new Page(this.doc, this.documentProperties, this.mergedConfig);
+                            pages[pageIndex] = page;
+                        }
+
+                        // Reset the data for next page
+                        columnPos = firstCellWidth;
+                        row = new Row();
+                        row.addColumn(this.rows[i].columns[0]);
+                        header = [this.header[0]];
+                        columnWidth = [this.columnWidth[0]];
+                    } else {
+                        // Crop the content, if the only column exceed the page width
+                        this.columnWidth[j] = availableWidth - rightMargin;
+                        let modifiedColumnWidth = this.columnWidth[j];
+                        const modifiedColumnWidthPx = UnitHelper.convertPtToPx(
+                            modifiedColumnWidth - leftPadding - rightPadding,
+                        );
+                        const truncatedText = Utils.trauncateText(column.text, fontSize, modifiedColumnWidthPx);
+                        column.setTruncatedText(truncatedText);
                     }
-
-                    // Reset the data for next page
-                    columnPos = firstCellWidth;
-                    row = new Row();
-                    row.addColumn(this.rows[i].columns[0]);
-                    header = [this.header[0]];
-                    columnWidth = [this.columnWidth[0]];
                 }
                 // Keep the track of data to be written in current page
                 columnPos += this.columnWidth[j];
-                row.addColumn(this.rows[i].columns[j]);
+                row.addColumn(column);
                 header.push(this.header[j]);
                 columnWidth.push(this.columnWidth[j]);
             }
@@ -160,13 +172,24 @@ export default class Page {
      */
     private writeCell(cell: Cell, cellIndex: number, columnPosition: number[], rowPosition: number): void {
         let { left: leftPadding } = this.mergedConfig.cellPadding;
-        leftPadding = Utils.toPts(leftPadding);
-
         const x = columnPosition[cellIndex];
         const y = rowPosition;
-        const { right: rightMargin, top: topMargin } = this.mergedConfig.margin!;
+        const { right: rightMargin } = this.mergedConfig.margin!;
+        const { scaleFactor, pageWidth } = this.documentProperties;
+
         const drawCellRect = (x: number, y: number, cellWidth: number, style = 'S'): void => {
-            this.doc.rect(x, y, cellWidth, this.rowHeight, style);
+            this.doc.setLineWidth(UnitHelper.documentUnitToPt(1, scaleFactor));
+            const xPos = UnitHelper.documentUnitToPt(x, scaleFactor);
+            const yPos = UnitHelper.documentUnitToPt(y, scaleFactor);
+            const width = UnitHelper.documentUnitToPt(cellWidth, scaleFactor);
+            const height = UnitHelper.documentUnitToPt(this.mergedConfig.rowHeight, scaleFactor);
+            this.doc.rect(xPos, yPos, width, height, style);
+        };
+
+        const writeText = (text: string, x: number, y: number, options) => {
+            const xPos = UnitHelper.documentUnitToPt(x, scaleFactor);
+            const yPos = UnitHelper.documentUnitToPt(y, scaleFactor);
+            this.doc.text(text, xPos, yPos, options);
         };
 
         const isLastColumn = (columnIndex): boolean => {
@@ -175,18 +198,22 @@ export default class Page {
 
         const getColumnWidth = (columnIndex: number): number => {
             if (isLastColumn(columnIndex)) {
-                return this.pageWidth - rightMargin - columnPosition[columnIndex];
+                return pageWidth - rightMargin - columnPosition[columnIndex];
             }
             return this.columnWidth[columnIndex];
         };
-
 
         this.doc.setFillColor(cell.background);
         this.doc.setDrawColor(this.mergedConfig.borderColor!);
         this.doc.setTextColor(cell.color);
 
         drawCellRect(x, y, getColumnWidth(cellIndex), 'FD');
-        this.doc.text(cell.text, x + leftPadding, y + this.rowHeight / 2, {
+        let text = cell.truncatedText || cell.text;
+
+        let xPos = x + leftPadding;
+        let yPos = y + this.mergedConfig.rowHeight / 2;
+
+        writeText(text, xPos, yPos, {
             lineHeightFactor: 0,
             baseline: 'middle',
         });
@@ -202,14 +229,14 @@ export default class Page {
      * @memberof Page
      */
     private writeContentRow(row: Row, rowIndex: number, columnPosition: number[]): void {
-        const { right: rightMargin, top: topMargin } = this.mergedConfig.margin!;
-        const y = this.rowHeight * rowIndex + topMargin + 15; // 15 is header row height
+        const { margin, headerHeight, rowHeight } = this.mergedConfig;
+        const { top: topMargin } = margin!;
+        const y = rowHeight * rowIndex + topMargin + headerHeight;
         const { columns } = row;
 
         // Print column cells
         for (let j = 0; j < columns.length; j++) {
             const column = columns[j];
-
             this.writeCell(column, j, columnPosition, y);
         }
     }
@@ -222,15 +249,8 @@ export default class Page {
      * @memberof Page
      */
     private writeHeader(columnPosition: number[]): void {
-        const { left: leftMargin, right: rightMargin, top: topMargin } = this.mergedConfig.margin!;
-
-        const getTableWidth = (): number => {
-            return this.pageWidth - leftMargin - rightMargin;
-        };
-
-        const drawRowRect = (y: number, style = 'S'): void => {
-            this.doc.rect(leftMargin, y, getTableWidth(), this.rowHeight, style);
-        };
+        const { margin } = this.mergedConfig;
+        const { top: topMargin } = margin!;
 
         // Print Header
         const y = topMargin;
@@ -251,6 +271,7 @@ export default class Page {
         if (this.columnWidth.length === 0) {
             throw new Error('Column width not available: Did you forget to call page.setColumnWidth()?');
         }
+        let { fontSize } = this.mergedConfig;
         const columnPosition = this.getColumnPositions();
         if (this.shouldSplitColumns(columnPosition)) {
             const pages = this.getColumnSplittedPages();
@@ -260,8 +281,8 @@ export default class Page {
             }
             return;
         }
-
-        this.doc.setFontSize(10);
+        fontSize = UnitHelper.convertPxToPt(fontSize);
+        this.doc.setFontSize(fontSize);
 
         this.writeHeader(columnPosition);
 

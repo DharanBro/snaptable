@@ -31,6 +31,10 @@ export default class Row {
      * @memberof Row
      */
     addColumn(column: string | ICell): void {
-        this.columns.push(new Cell(column));
+        if (column instanceof Cell) {
+            this.columns.push(column);
+        } else {
+            this.columns.push(new Cell(column));
+        }
     }
 }
