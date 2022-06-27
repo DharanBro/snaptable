@@ -3,7 +3,6 @@ import Page from './Page';
 import pixelWidth from 'string-pixel-width';
 import Row from './Row';
 import Colors from './enum/colors';
-import JspdfUtils from './JspdfUtils';
 import {
     ICell,
     IRow,
@@ -59,7 +58,7 @@ export default class SnapTable {
 
     constructor(doc: jsPDF, configuration: IPageConfiguration) {
         this.doc = doc;
-        const currentPageInfo: JsPDFX.ICurrentPageInfo = this.doc.internal.getCurrentPageInfo();
+        const currentPageInfo: JsPDFX.ICurrentPageInfo = this.doc.getCurrentPageInfo();
         let pageWidth = currentPageInfo.pageContext.mediaBox.topRightX;
         let pageHeight = currentPageInfo.pageContext.mediaBox.topRightY;
         const { scaleFactor } = doc.internal;
@@ -144,7 +143,7 @@ export default class SnapTable {
             pages[i].writeToPdf();
         }
 
-        const currentPage = JspdfUtils.getCurrentPageNumber(this.doc);
+        const currentPage = this.doc.getCurrentPageInfo().pageNumber;
         this.doc.deletePage(currentPage);
     }
 }

@@ -211,11 +211,11 @@ export default class Page {
         let text = cell.truncatedText || cell.text;
 
         let xPos = x + leftPadding;
-        let yPos = y + this.mergedConfig.rowHeight / 2;
+        let yPos = y;
 
         writeText(text, xPos, yPos, {
             lineHeightFactor: 0,
-            baseline: 'middle',
+            baseline: 'bottom',
         });
     }
 
